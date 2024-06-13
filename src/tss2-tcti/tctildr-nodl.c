@@ -40,6 +40,7 @@
 #include "tctildr.h"
 #include "tss2_tcti_mssim.h"
 #include "tss2_tcti_swtpm.h"
+#include "tss2_tcti_libtpms.h"
 #ifdef _WIN32
 #include "tss2_tcti_tbs.h"
 #else /* _WIN32 */
@@ -134,6 +135,17 @@ struct {
         .description = "Access to simulator using MS protocol, default conf",
     },
 #endif /* TCTI_MSSIM */
+#ifdef TCTI_LIBTPMS
+    {
+        .names = {
+            "libtss2-tcti-libtpms.so.0",
+            "libtss2-tcti-libtpms.so",
+            "libtpms",
+        },
+        .init = Tss2_Tcti_Libtpms_Init,
+        .description = "Access to libtpms",
+    },
+#endif /* TCTI_LIBTPMS */
 };
 TSS2_RC
 tctildr_get_default(TSS2_TCTI_CONTEXT ** tcticontext, void **dlhandle)

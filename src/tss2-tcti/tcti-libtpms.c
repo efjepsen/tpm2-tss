@@ -478,7 +478,11 @@ tcti_libtpms_finalize(
     tcti_libtpms->TPMLIB_Terminate();
 
     /* close libtpms library handle */
+#ifdef NO_DL
+    tcti_libtpms->libtpms = NULL;
+#else
     dlclose(tcti_libtpms->libtpms);
+#endif /* NO_DL */
 
     if (tcti_libtpms->state_mmap != NULL) {
         /* unmap memory (may be backed by a state file) */
@@ -651,6 +655,26 @@ cleanup_dl:
     return TSS2_TCTI_RC_GENERAL_FAILURE;
 }
 
+TSS2_RC
+tcti_libtpms_nodl(TSS2_TCTI_LIBTPMS_CONTEXT *tcti_libtpms)
+{
+    if (tcti_libtpms->libtpms != NULL) {
+        LOG_ERROR("libtpms library already loaded");
+        return TSS2_TCTI_RC_GENERAL_FAILURE;
+    }
+
+    tcti_libtpms->TPMLIB_ChooseTPMVersion = &TPMLIB_ChooseTPMVersion;
+    tcti_libtpms->TPMLIB_RegisterCallbacks = &TPMLIB_RegisterCallbacks;
+    tcti_libtpms->TPMLIB_GetState = &TPMLIB_GetState;
+    tcti_libtpms->TPMLIB_MainInit = &TPMLIB_MainInit;
+    tcti_libtpms->TPMLIB_Process = &TPMLIB_Process;
+    tcti_libtpms->TPMLIB_SetState = &TPMLIB_SetState;
+    tcti_libtpms->TPMLIB_Terminate = &TPMLIB_Terminate;
+    tcti_libtpms->TPM_IO_TpmEstablished_Reset = &TPM_IO_TpmEstablished_Reset;
+
+    return TPM2_RC_SUCCESS;
+}
+
 /****************** libtpms callbacks ******************
  * Override the libtpms callbacks. This is needed to implement localities and to
  * prevent the NVChip file from being created. The other callbacks are
@@ -800,7 +824,12 @@ Tss2_Tcti_Libtpms_Init(
         return rc;
     }
 
+#ifdef NO_DL
+    rc = tcti_libtpms_nodl(tcti_libtpms);
+#else
     rc = tcti_libtpms_dl(tcti_libtpms);
+#endif /* NO_DL */
+
     if (rc != TPM2_RC_SUCCESS) {
         return rc;
     }
@@ -868,7 +897,11 @@ cleanup_state_path:
     }
 
 cleanup_dl:
+#ifdef NO_DL
+    tcti_libtpms->libtpms = NULL;
+#else
     dlclose(tcti_libtpms->libtpms);
+#endif /* NO_DL */
 
     return rc;
 }
